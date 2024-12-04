@@ -2,22 +2,18 @@
 
 import { Button } from "@/components/ui/button";
 import { useAlgorithmStore } from "@/lib/stores/algorithm-store";
-import { 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  StepForward 
-} from "lucide-react";
+import { useVisualizationStore } from "@/lib/stores/visualization-store";
+import { Play, Pause, RotateCcw, StepForward } from "lucide-react";
 
 export function Controls() {
+  const { selectedAlgorithm } = useAlgorithmStore();
   const { 
-    selectedAlgorithm, 
     isPlaying, 
     setIsPlaying, 
     stepForward, 
     reset,
     visualizationState 
-  } = useAlgorithmStore();
+  } = useVisualizationStore();
 
   if (!selectedAlgorithm) {
     return null;
