@@ -1,4 +1,9 @@
 import { Algorithm } from "@/lib/types/algorithm";
+import { binarySearch } from "./searching/binary-search";
+import { linearSearch } from "./searching/linear-search";
+import { jumpSearch } from "./searching/jump-search";
+import { interpolationSearch } from "./searching/interpolation-search";
+import { exponentialSearch } from "./searching/exponential-search";
 
 export const algorithms: Algorithm[] = [
   {
@@ -568,5 +573,10 @@ def merge(left, right):
     for i in range(len(arr)):
         arr[i] = output[i]
     return arr`,
-  }
+  },
+  binarySearch,
+  linearSearch,
+  jumpSearch,
+  interpolationSearch,
+  exponentialSearch,
 ];
