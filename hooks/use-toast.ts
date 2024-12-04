@@ -13,6 +13,7 @@ type ToasterToast = ToastProps & {
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: ToastActionElement;
+  onOpenChange?: ((open: boolean) => void) | undefined;
 };
 
 const actionTypes = {
@@ -154,8 +155,7 @@ function toast({ ...props }: Toast) {
     toast: {
       ...props,
       id,
-      open: true,
-      onOpenChange: (open) => {
+      onOpenChange: (open: boolean) => {
         if (!open) dismiss();
       },
     },
@@ -179,11 +179,15 @@ function useToast() {
         listeners.splice(index, 1);
       }
     };
-  }, [state]);
+  }, []);
+
+  const toastFn = React.useCallback((props: Toast) => {
+    return toast(props);
+  }, []);
 
   return {
     ...state,
-    toast,
+    toast: toastFn,
     dismiss: (toastId?: string) => dispatch({ type: 'DISMISS_TOAST', toastId }),
   };
 }

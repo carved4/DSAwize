@@ -8,11 +8,11 @@ import { Play, Pause, RotateCcw, StepForward } from "lucide-react";
 export function Controls() {
   const { selectedAlgorithm } = useAlgorithmStore();
   const { 
-    isPlaying, 
-    setIsPlaying, 
-    stepForward, 
-    reset,
-    visualizationState 
+    isRunning, 
+    setIsRunning, 
+    nextStep, 
+    resetVisualization,
+    steps 
   } = useVisualizationStore();
 
   if (!selectedAlgorithm) {
@@ -20,30 +20,30 @@ export function Controls() {
   }
 
   const handlePlay = () => {
-    if (!visualizationState) {
-      reset();
+    if (steps.length === 0) {
+      resetVisualization();
     }
-    setIsPlaying(true);
+    setIsRunning(true);
   };
 
   const handlePause = () => {
-    setIsPlaying(false);
+    setIsRunning(false);
   };
 
   const handleStepForward = () => {
-    if (!visualizationState) {
-      reset();
+    if (steps.length === 0) {
+      resetVisualization();
     }
-    stepForward();
+    nextStep();
   };
 
   const handleReset = () => {
-    reset();
+    resetVisualization();
   };
 
   return (
     <div className="flex space-x-2">
-      {isPlaying ? (
+      {isRunning ? (
         <Button 
           variant="outline" 
           onClick={handlePause}
@@ -62,7 +62,7 @@ export function Controls() {
       <Button 
         variant="outline" 
         onClick={handleStepForward}
-        disabled={isPlaying}
+        disabled={isRunning}
       >
         <StepForward className="mr-2 h-4 w-4" /> Step
       </Button>
