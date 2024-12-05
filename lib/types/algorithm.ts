@@ -1,21 +1,25 @@
 export type AlgorithmCategory = 'sorting' | 'searching' | 'graph' | 'grid' | 'tree' | 'dynamic';
 
+export type TimeComplexity = {
+  best?: string;
+  average?: string;
+  worst?: string;
+} | string;
+
 export interface Complexity {
-  time: {
-    best?: string;
-    average?: string;
-    worst?: string;
-  } | string;
+  time: TimeComplexity;
   space?: string;
 }
 
 export interface Algorithm {
   id: string;
   name: string;
-  category: AlgorithmCategory;
   description: string;
-  complexity?: Complexity;
   defaultCode: string;
+  pythonCode: string;
+  timeComplexity: string;
+  spaceComplexity: string;
+  category: 'sorting' | 'searching' | 'graph';
 }
 
 export interface TreeNode {

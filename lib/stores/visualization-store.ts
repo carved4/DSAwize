@@ -1,212 +1,312 @@
-import { create } from 'zustand';
+import { create } from "zustand";
+
+export type VisualizationStepType = 
+  | "comparison" 
+  | "swap" 
+  | "partition" 
+  | "merge" 
+  | "visit" 
+  | "error"
+  | "heapify"      // For heap sort
+  | "gap-change"   // For shell sort
+  | "count"        // For counting sort
+  | "select"       // For selection sort
+  | "search"       // Add for binary search
+  | "path-update";  // Add for Dijkstra's
 
 export interface VisualizationStep {
-  type: 'comparison' | 'array-modification' | 'function-call' | 'variable-change' | 'error';
-  description?: string;
-  details?: any;
+  type: VisualizationStepType;
+  indices: number[];
+  details?: {
+    values?: (number | string)[];
+    startIdx?: number;
+    endIdx?: number;
+    pivotIdx?: number;
+    leftArray?: number[];
+    rightArray?: number[];
+    mergedArray?: number[];
+    gap?: number;        // For shell sort
+    heapSize?: number;   // For heap sort
+    counts?: number[];   // For counting sort
+    minIndex?: number;   // For selection sort
+    target?: number;     // Add for binary search
+    found?: boolean;     // Add for binary search
+    distance?: number;   // Add for Dijkstra's
+    path?: string[];    // Add for Dijkstra's
+  };
 }
 
-export interface VisualizationState {
-  algorithmCode: string;
-  isRunning: boolean;
-  currentStep: number;
+interface VisualizationState {
+  array: number[];
   steps: VisualizationStep[];
-  arrayStates: number[][];
+  currentStep: number;
+  currentStepData: VisualizationStep | null;
+  isPlaying: boolean;
+  speed: number;
+  algorithmType: string;
+  algorithmCode: string;
+  currentArray: number[];
   
-  setAlgorithmCode: (code: string) => void;
-  runVisualization: (input?: number[]) => void;
-  resetVisualization: () => void;
+  // Actions
+  setArray: (array: number[]) => void;
+  setSteps: (steps: VisualizationStep[]) => void;
   nextStep: () => void;
   prevStep: () => void;
-  setIsRunning: (isRunning: boolean) => void;
+  resetVisualization: () => void;
+  setIsPlaying: (isPlaying: boolean) => void;
+  setSpeed: (speed: number) => void;
+  setAlgorithmType: (type: string) => void;
+  setAlgorithmCode: (code: string) => void;
+  generateSteps: (array: number[], type: string, code: string) => void;
+  runVisualization: () => void;
 }
 
 export const useVisualizationStore = create<VisualizationState>((set, get) => ({
-  algorithmCode: '',
-  isRunning: false,
-  currentStep: 0,
+  array: [],
   steps: [],
-  arrayStates: [],
+  currentStep: 0,
+  currentStepData: null,
+  isPlaying: false,
+  speed: 1,
+  algorithmType: "",
+  algorithmCode: "",
+  currentArray: [],
 
-  setAlgorithmCode: (code: string) => {
-    set({ 
-      algorithmCode: code, 
-      steps: [], 
-      currentStep: 0,
-      isRunning: false,
-      arrayStates: []
-    });
+  setArray: (array) => set({ array, currentArray: [...array] }),
+  setSteps: (steps) => set({ steps }),
+  
+  nextStep: () => {
+    const { currentStep, steps, array } = get();
+    if (currentStep < steps.length - 1) {
+      const nextStep = steps[currentStep + 1];
+      const newArray = [...get().currentArray];
+
+      // Update array based on step type
+      switch (nextStep.type) {
+        case 'swap':
+          const [i, j] = nextStep.indices;
+          const temp = newArray[i];
+          newArray[i] = newArray[j];
+          newArray[j] = temp;
+          break;
+        case 'comparison':
+          // Just highlight the comparison, don't modify array
+          break;
+        case 'gap-change':
+          // Just highlight the gap change, array updates through swaps
+          break;
+        case 'count':
+          // Just highlight the counting, array updates through swaps
+          break;
+      }
+
+      set({
+        currentStep: currentStep + 1,
+        currentStepData: nextStep,
+        currentArray: newArray,
+        isPlaying: currentStep + 1 === steps.length - 1 ? false : get().isPlaying
+      });
+    } else {
+      set({ isPlaying: false });
+    }
   },
 
-  runVisualization: (input: number[] = [5, 2, 9, 1, 7, 6, 3]) => {
-    const { algorithmCode } = get();
-    
-    console.log('Running visualization with algorithm code:', algorithmCode);
-    
-    // Check if algorithm code is empty
-    if (!algorithmCode) {
-      console.error('No algorithm code provided');
+  prevStep: () => {
+    const { currentStep, steps, array } = get();
+    if (currentStep > 0) {
+      const prevStep = steps[currentStep - 1];
+      const newArray = [...get().currentArray];
+
+      // Reverse the previous operation
+      if (prevStep.type === 'swap') {
+        const [i, j] = prevStep.indices;
+        const temp = newArray[i];
+        newArray[i] = newArray[j];
+        newArray[j] = temp;
+      }
+
       set({
-        steps: [{ 
-          type: 'error', 
-          description: 'No algorithm code provided',
-          details: { message: 'Please select an algorithm or write code first' }
-        }],
-        isRunning: false,
-        arrayStates: []
+        currentStep: currentStep - 1,
+        currentStepData: prevStep,
+        currentArray: newArray
       });
-      return;
-    }
-    
-    // Store the original sort method outside the try block
-    const originalSort = Array.prototype.sort;
-    
-    try {
-      // Create a comprehensive step tracking mechanism
-      const steps: VisualizationStep[] = [];
-      
-      // Track the current state of the array
-      const arrayStates: number[][] = [input.slice()];
-      
-      // Create a proxy-based tracer for detailed step tracking
-      const createTracer = () => {
-        return {
-          trackComparison: (a: any, b: any, result: number) => {
-            console.log(`Comparison: ${a} vs ${b}, result: ${result}`);
-            steps.push({
-              type: 'comparison',
-              description: `Comparing ${a} and ${b}`,
-              details: { a, b, result }
-            });
-          },
-          trackArrayModification: (array: any[], index: number, oldValue: any, newValue: any) => {
-            console.log(`Array modification: index ${index}, old: ${oldValue}, new: ${newValue}`);
-            steps.push({
-              type: 'array-modification',
-              description: `Modified array at index ${index}`,
-              details: { index, oldValue, newValue }
-            });
-            // Create a copy of the current array state
-            arrayStates.push(array.slice());
-          },
-          trackFunctionCall: (functionName: string, args: any[]) => {
-            console.log(`Function call: ${functionName}, args: ${JSON.stringify(args)}`);
-            steps.push({
-              type: 'function-call',
-              description: `Called ${functionName}`,
-              details: { functionName, args }
-            });
-          },
-          trackVariableChange: (variableName: string, oldValue: any, newValue: any) => {
-            console.log(`Variable change: ${variableName}, old: ${oldValue}, new: ${newValue}`);
-            steps.push({
-              type: 'variable-change',
-              description: `${variableName} changed`,
-              details: { variableName, oldValue, newValue }
-            });
-          }
-        };
-      };
-
-      // Create a sandbox for executing the code with tracing
-      const tracer = createTracer();
-      console.log('Input for visualization:', input);
-
-      // Modify the global object to include tracing
-      (globalThis as any).trace = tracer;
-
-      // Wrap swap function for sorting algorithms
-      (globalThis as any).swap = function(arr: any[], i: number, j: number) {
-        tracer.trackFunctionCall('swap', [i, j]);
-        tracer.trackArrayModification(arr, i, arr[i], arr[j]);
-        tracer.trackArrayModification(arr, j, arr[j], arr[i]);
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      };
-
-      // Modify Array.prototype to capture steps
-      Array.prototype.sort = function(this: any[], compareFn?: (a: any, b: any) => number) {
-        return originalSort.call(this, (a: any, b: any) => {
-          const result = compareFn ? compareFn(a, b) : (a < b ? -1 : a > b ? 1 : 0);
-          tracer.trackComparison(a, b, result);
-          return result;
-        });
-      };
-
-      // Execute the algorithm
-      const executeAlgorithm = new Function('input', `
-        console.log('Executing algorithm with input:', input);
-        const result = ${algorithmCode};
-        return result || input;  // Return result or original input if no return
-      `);
-      const result = executeAlgorithm(input);
-      console.log('Algorithm result:', result);
-
-      // Ensure we have at least one step and array state
-      if (steps.length === 0) {
-        steps.push({
-          type: 'function-call',
-          description: 'Algorithm executed',
-          details: { result }
-        });
-      }
-
-      // Add final array state if not already present
-      if (arrayStates[arrayStates.length - 1].toString() !== result.toString()) {
-        arrayStates.push(result);
-      }
-
-      // Update store with captured steps and array states
-      set(state => ({
-        steps: steps,
-        isRunning: true,
-        currentStep: 0,
-        arrayStates: arrayStates
-      }));
-
-    } catch (error) {
-      console.error('Visualization error:', error);
-      set({ 
-        isRunning: false,
-        steps: [{ 
-          type: 'error', 
-          description: 'Visualization failed',
-          details: { 
-            message: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : 'No stack trace'
-          }
-        }],
-        arrayStates: []
-      });
-    } finally {
-      // Clean up global modifications
-      delete (globalThis as any).trace;
-      delete (globalThis as any).swap;
-      Array.prototype.sort = originalSort;
     }
   },
 
   resetVisualization: () => {
+    const { array } = get();
     set({
-      isRunning: false,
       currentStep: 0,
-      steps: [],
-      arrayStates: []
+      currentStepData: null,
+      isPlaying: false,
+      currentArray: [...array]  // Reset to initial array
     });
   },
 
-  nextStep: () => {
-    set(state => ({
-      currentStep: Math.min(state.currentStep + 1, state.steps.length - 1)
-    }));
+  setIsPlaying: (isPlaying) => set({ isPlaying }),
+  setSpeed: (speed) => set({ speed }),
+  setAlgorithmType: (type) => set({ algorithmType: type }),
+  setAlgorithmCode: (code) => set({ algorithmCode: code }),
+
+  generateSteps: (array, type, code) => {
+    set({ array: [...array] });
+    const steps: VisualizationStep[] = [];
+    const workingArray = [...array];
+
+    try {
+      // Wrap the algorithm code with our recording functions
+      const wrappedCode = `
+        function __recordComparison(i, j) {
+          __steps.push({
+            type: 'comparison',
+            indices: [i, j],
+            details: { values: [arr[i], arr[j]] }
+          });
+        }
+
+        function __recordSwap(i, j) {
+          __steps.push({
+            type: 'swap',
+            indices: [i, j],
+            details: { values: [arr[i], arr[j]] }
+          });
+        }
+
+        function __recordPartition(low, high, pivot) {
+          __steps.push({
+            type: 'partition',
+            indices: [low, high],
+            details: { 
+              values: [arr[low], arr[high], pivot],
+              pivotIdx: high,
+              leftArray: arr.slice(low, high + 1)
+            }
+          });
+        }
+
+        function __recordMerge(start, end, array) {
+          __steps.push({
+            type: 'merge',
+            indices: [start, end],
+            details: {
+              startIdx: start,
+              endIdx: end,
+              mergedArray: array
+            }
+          });
+        }
+
+        function __recordHeapify(root, heapSize) {
+          __steps.push({
+            type: 'heapify',
+            indices: [root, root * 2 + 1, root * 2 + 2].filter(i => i < heapSize),
+            details: { 
+              values: [arr[root]],
+              heapSize
+            }
+          });
+        }
+
+        function __recordGapChange(gap) {
+          __steps.push({
+            type: 'gap-change',
+            indices: [],
+            details: { 
+              values: [gap],
+              gap
+            }
+          });
+        }
+
+        function __recordCount(index, count) {
+          __steps.push({
+            type: 'count',
+            indices: [index],
+            details: { 
+              values: [count],
+              counts: [...count]
+            }
+          });
+        }
+
+        function __recordSelect(currentIndex, minIndex) {
+          __steps.push({
+            type: 'select',
+            indices: [currentIndex, minIndex],
+            details: { 
+              values: [arr[currentIndex], arr[minIndex]],
+              minIndex
+            }
+          });
+        }
+
+        function __recordSearch(index, target, found = false) {
+          __steps.push({
+            type: 'search',
+            indices: [index],
+            details: { 
+              values: [arr[index]],
+              target,
+              found
+            }
+          });
+        }
+
+        function __recordPathUpdate(vertex, distance, path) {
+          __steps.push({
+            type: 'path-update',
+            indices: [],
+            details: {
+              values: [vertex],
+              distance,
+              path
+            }
+          });
+        }
+
+        ${code}
+
+        // Execute the appropriate function based on algorithm type
+        if (typeof bubbleSort === 'function') bubbleSort(arr);
+        else if (typeof quickSort === 'function') quickSort(arr);
+        else if (typeof mergeSort === 'function') mergeSort(arr);
+        else if (typeof insertionSort === 'function') insertionSort(arr);
+        else if (typeof selectionSort === 'function') selectionSort(arr);
+        else if (typeof heapSort === 'function') heapSort(arr);
+        else if (typeof shellSort === 'function') shellSort(arr);
+        else if (typeof countingSort === 'function') countingSort(arr);
+        else if (typeof binarySearch === 'function') binarySearch(arr, arr[0]);
+      `;
+
+      // Execute the wrapped code
+      const fn = new Function('arr', '__steps', wrappedCode);
+      const recordedSteps: VisualizationStep[] = [];
+      fn(workingArray, recordedSteps);
+
+      set({ 
+        steps: recordedSteps,
+        currentStep: 0,
+        currentStepData: recordedSteps[0] || null,
+        isPlaying: false 
+      });
+    } catch (error) {
+      console.error('Error executing algorithm:', error);
+      steps.push({
+        type: 'error',
+        indices: [],
+        details: { values: [(error as Error).message] }
+      });
+      set({ 
+        steps,
+        currentStep: 0,
+        currentStepData: steps[0] || null,
+        isPlaying: false 
+      });
+    }
   },
 
-  prevStep: () => {
-    set(state => ({
-      currentStep: Math.max(state.currentStep - 1, 0)
-    }));
-  },
-
-  setIsRunning: (isRunning: boolean) => {
-    set({ isRunning });
+  runVisualization: () => {
+    const { array, algorithmCode, algorithmType } = get();
+    get().generateSteps(array, algorithmType, algorithmCode);
   }
 }));

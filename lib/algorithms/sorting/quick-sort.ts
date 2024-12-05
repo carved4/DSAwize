@@ -13,10 +13,7 @@ export const quickSort = {
   },
   defaultCode: `function quickSort(arr, low = 0, high = arr.length - 1) {
   if (low < high) {
-    // Find the partition index
     const pi = partition(arr, low, high);
-    
-    // Recursively sort elements before and after partition
     quickSort(arr, low, pi - 1);
     quickSort(arr, pi + 1, high);
   }
@@ -28,13 +25,17 @@ function partition(arr, low, high) {
   let i = low - 1;
   
   for (let j = low; j < high; j++) {
-    if (arr[j] <= pivot) {
+    if (visualize.compare(j, high) <= 0) {
       i++;
-      [arr[i], arr[j]] = [arr[j], arr[i]];
+      if (i !== j) {
+        visualize.swap(arr, i, j);
+      }
     }
   }
   
-  [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
+  if (i + 1 !== high) {
+    visualize.swap(arr, i + 1, high);
+  }
   return i + 1;
 }`
 };

@@ -1,26 +1,23 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
-import { ThemeProvider } from '@/components/theme-provider';
-import { Toaster } from '@/components/ui/toaster';
-import SessionProvider from '@/components/SessionProvider';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { Inter } from "next/font/google";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Navigation } from "@/components/navigation";
+import { SessionProvider } from "@/components/providers/session-provider";
+import { Toaster } from "@/components/ui/toaster";
+import type { Metadata } from "next";
+import "./globals.css";
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'AlgoMaster - Master Algorithms Visually',
-  description: 'Interactive platform for learning and mastering algorithms',
+  title: "AlgoMaster - Master Algorithms Visually",
+  description: "Interactive platform for learning and mastering algorithms",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession(authOptions);
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
@@ -31,6 +28,7 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
+            <Navigation />
             {children}
             <Toaster />
           </ThemeProvider>

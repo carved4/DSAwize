@@ -8,8 +8,8 @@ import { Play, Pause, RotateCcw, StepForward } from "lucide-react";
 export function Controls() {
   const { selectedAlgorithm } = useAlgorithmStore();
   const { 
-    isRunning, 
-    setIsRunning, 
+    isPlaying, 
+    setIsPlaying, 
     nextStep, 
     resetVisualization,
     steps 
@@ -21,18 +21,30 @@ export function Controls() {
 
   const handlePlay = () => {
     if (steps.length === 0) {
+      const array = [5, 3, 8, 4, 2, 7, 1, 6]; // Initial test array
       resetVisualization();
+      useVisualizationStore.getState().generateSteps(
+        array,
+        selectedAlgorithm?.id || '',
+        selectedAlgorithm?.defaultCode || ''
+      );
     }
-    setIsRunning(true);
+    setIsPlaying(true);
   };
 
   const handlePause = () => {
-    setIsRunning(false);
+    setIsPlaying(false);
   };
 
   const handleStepForward = () => {
     if (steps.length === 0) {
+      const array = [5, 3, 8, 4, 2, 7, 1, 6]; // Initial test array
       resetVisualization();
+      useVisualizationStore.getState().generateSteps(
+        array,
+        selectedAlgorithm?.id || '',
+        selectedAlgorithm?.defaultCode || ''
+      );
     }
     nextStep();
   };
@@ -43,7 +55,7 @@ export function Controls() {
 
   return (
     <div className="flex space-x-2">
-      {isRunning ? (
+      {isPlaying ? (
         <Button 
           variant="outline" 
           onClick={handlePause}
@@ -62,7 +74,7 @@ export function Controls() {
       <Button 
         variant="outline" 
         onClick={handleStepForward}
-        disabled={isRunning}
+        disabled={isPlaying}
       >
         <StepForward className="mr-2 h-4 w-4" /> Step
       </Button>

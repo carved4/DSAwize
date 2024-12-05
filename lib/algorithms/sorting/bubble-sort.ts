@@ -8,9 +8,8 @@ export const bubbleSort = {
   
   for (let i = 0; i < n - 1; i++) {
     for (let j = 0; j < n - i - 1; j++) {
-      if (arr[j] > arr[j + 1]) {
-        // Swap elements
-        [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+      if (visualize.compare(j, j + 1) > 0) {
+        visualize.swap(arr, j, j + 1);
       }
     }
   }

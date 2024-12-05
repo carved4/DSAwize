@@ -1,16 +1,15 @@
-import { DefaultSession } from "next-auth"
+import { DefaultSession, DefaultUser } from "next-auth"
 
 declare module "next-auth" {
   interface Session {
     user: {
       id: string
-      // Add other custom fields here
+      points: number
     } & DefaultSession["user"]
   }
 
-  interface User {
-    id: string
-    // Add other custom fields here
+  interface User extends DefaultUser {
+    points?: number
   }
 }
 
