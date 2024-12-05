@@ -103,7 +103,7 @@ export function Navigation() {
           {/* Right side */}
           <div className="flex items-center gap-4">
             <a
-              href="https://github.com/yourusername/algoviz"
+              href="https://github.com/carved4/DSAwize"
               target="_blank"
               rel="noopener noreferrer"
               className="hidden sm:block"
