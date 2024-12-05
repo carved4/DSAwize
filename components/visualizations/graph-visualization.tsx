@@ -1,132 +1,90 @@
 "use client";
 
 import React, { useEffect, useRef } from 'react';
-import * as d3 from 'd3';
-import { VisualizationState } from '@/lib/types/algorithm';
+import { useVisualizationStore } from '@/lib/stores/visualization-store';
+import { GraphVisualizationState, VisualizationComponentProps } from '@/lib/types/visualization';
 
-interface GraphNode {
-  id: string;
-  x?: number;
-  y?: number;
-  fx?: number;
-  fy?: number;
-}
-
-interface GraphLink {
-  source: string;
-  target: string;
-  weight?: number;
-}
-
-interface GraphVisualizationProps {
-  state: Pick<VisualizationState, 'nodes' | 'links' | 'visited' | 'current' | 'path'>;
-}
-
-export function GraphVisualization({ state }: GraphVisualizationProps) {
+export function GraphVisualization({ state, className = '' }: VisualizationComponentProps<GraphVisualizationState>) {
   const svgRef = useRef<SVGSVGElement>(null);
-
+  const { currentStepData, graphState, setGraphState } = useVisualizationStore();
+  
+  // Center the graph in the viewport with padding
   useEffect(() => {
-    if (!svgRef.current || !state.nodes || state.nodes.length === 0) return;
+    if (!svgRef.current || !graphState.nodes.length) return;
+    
+    const svg = svgRef.current;
+    const bbox = svg.getBoundingClientRect();
+    const padding = 50; // Add padding
+    const centerX = bbox.width / 2;
+    const centerY = bbox.height / 2;
 
-    const width = svgRef.current.clientWidth || 600;
-    const height = svgRef.current.clientHeight || 400;
+    // Scale down the positions to fit within the viewport
+    const scale = 0.8; // Reduce to 80% of original size
+    const adjustedNodes = graphState.nodes.map(node => ({
+      ...node,
+      x: centerX + (node.x - 300) * scale,
+      y: centerY + (node.y - 150) * scale
+    }));
 
-    // Clear previous visualization
-    d3.select(svgRef.current).selectAll("*").remove();
-
-    const svg = d3.select(svgRef.current)
-      .attr("width", width)
-      .attr("height", height);
-
-    // Create forces for graph layout
-    const simulation = d3.forceSimulation<GraphNode>(state.nodes)
-      .force("link", d3.forceLink(state.links || []).id((d: any) => d.id))
-      .force("charge", d3.forceManyBody().strength(-200))
-      .force("center", d3.forceCenter(width / 2, height / 2));
-
-    // Create links
-    const links = svg.append("g")
-      .selectAll("line")
-      .data(state.links || [])
-      .enter()
-      .append("line")
-      .attr("stroke", "#999")
-      .attr("stroke-width", d => d.weight ? Math.log(d.weight) : 2)
-      .attr("stroke-opacity", 0.6);
-
-    // Create nodes
-    const nodes = svg.append("g")
-      .selectAll("circle")
-      .data(state.nodes)
-      .enter()
-      .append("circle")
-      .attr("r", 10)
-      .attr("fill", (d) => {
-        if (d.id === state.current) return "#ff0000";
-        if (state.visited?.includes(d.id)) return "#00ff00";
-        if (state.path?.includes(d.id)) return "#0000ff";
-        return "#999";
-      })
-      .call(d3.drag<SVGCircleElement, GraphNode>()
-        .on("start", (event: d3.D3DragEvent<SVGCircleElement, GraphNode, unknown>, d) => {
-          if (!event.active) simulation.alphaTarget(0.3).restart();
-          d.fx = d.x;
-          d.fy = d.y;
-        })
-        .on("drag", (event: d3.D3DragEvent<SVGCircleElement, GraphNode, unknown>, d) => {
-          d.fx = event.x;
-          d.fy = event.y;
-        })
-        .on("end", (event: d3.D3DragEvent<SVGCircleElement, GraphNode, unknown>, d) => {
-          if (!event.active) simulation.alphaTarget(0);
-          d.fx = undefined;
-          d.fy = undefined;
-        }));
-
-    // Add node labels
-    const labels = svg.append("g")
-      .selectAll("text")
-      .data(state.nodes)
-      .enter()
-      .append("text")
-      .text((d) => d.id)
-      .attr("font-size", "12px")
-      .attr("dx", 12)
-      .attr("dy", 4);
-
-    // Add weight labels if they exist
-    svg.append("g")
-      .selectAll("text")
-      .data(state.links || [])
-      .enter()
-      .append("text")
-      .text((d) => d.weight !== undefined ? d.weight.toString() : "")
-      .attr("font-size", "10px")
-      .attr("text-anchor", "middle");
-
-    // Update positions on simulation tick
-    simulation.on("tick", () => {
-      links
-        .attr("x1", (d: any) => d.source.x)
-        .attr("y1", (d: any) => d.source.y)
-        .attr("x2", (d: any) => d.target.x)
-        .attr("y2", (d: any) => d.target.y);
-
-      nodes
-        .attr("cx", (d: any) => d.x)
-        .attr("cy", (d: any) => d.y);
-
-      labels
-        .attr("x", (d: any) => d.x)
-        .attr("y", (d: any) => d.y);
+    setGraphState({
+      ...graphState,
+      nodes: adjustedNodes
     });
-
-  }, [state]);
+  }, []);
 
   return (
-    <svg
-      ref={svgRef}
-      className="w-full h-full"
-    />
+    <div className={`graph-visualization ${className}`}>
+      <svg ref={svgRef} className="w-full h-full" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet">
+        {/* Draw edges */}
+        {graphState.links?.map((link) => (
+          <line
+            key={`${link.source}-${link.target}`}
+            x1={graphState.nodes.find(n => n.id === link.source)?.x || 0}
+            y1={graphState.nodes.find(n => n.id === link.source)?.y || 0}
+            x2={graphState.nodes.find(n => n.id === link.target)?.x || 0}
+            y2={graphState.nodes.find(n => n.id === link.target)?.y || 0}
+            stroke={graphState.path?.includes(link.source) && graphState.path?.includes(link.target) 
+              ? '#22c55e' // green-500 for path
+              : '#6b7280' // gray-500 for normal
+            }
+            strokeWidth={3}
+            className="transition-colors duration-500"
+          />
+        ))}
+
+        {/* Draw nodes */}
+        {graphState.nodes.map((node) => (
+          <g key={node.id} className="transition-transform duration-500">
+            <circle
+              cx={node.x}
+              cy={node.y}
+              r={25}
+              fill={
+                node.id === graphState.current
+                  ? '#ef4444' // red-500 for current
+                  : graphState.visited?.includes(node.id)
+                  ? '#22c55e' // green-500 for visited
+                  : graphState.path?.includes(node.id)
+                  ? '#3b82f6' // blue-500 for path
+                  : '#6b7280' // gray-500 for unvisited
+              }
+              className="transition-colors duration-500 hover:opacity-80"
+            />
+            <text
+              x={node.x}
+              y={node.y}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="white"
+              fontSize={14}
+              fontWeight="bold"
+              className="pointer-events-none select-none"
+            >
+              {node.id}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
   );
 }

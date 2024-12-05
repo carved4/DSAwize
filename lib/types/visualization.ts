@@ -8,10 +8,10 @@ export interface ArrayVisualizationState {
 }
 
 export interface GraphVisualizationState {
-  nodes: { id: string; x?: number; y?: number; }[];
+  nodes: { id: string; x: number; y: number; }[];
   links: { source: string; target: string; weight?: number; }[];
   visited: string[];
-  current?: string;
+  current: string | null;
   path: string[];
 }
 

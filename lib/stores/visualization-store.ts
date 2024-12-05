@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { GraphVisualizationState } from '@/lib/types/visualization';
 
 export type VisualizationStepType = 
   | "comparison" 
@@ -46,6 +47,10 @@ interface VisualizationState {
   algorithmType: string;
   algorithmCode: string;
   currentArray: number[];
+  visualizationType: 'array' | 'graph' | 'grid';
+  currentIndex: number;
+  comparingIndex: number;
+  sortedIndices: number[];
   
   // Actions
   setArray: (array: number[]) => void;
@@ -61,7 +66,13 @@ interface VisualizationState {
   runVisualization: () => void;
 }
 
-export const useVisualizationStore = create<VisualizationState>((set, get) => ({
+interface VisualizationStore extends VisualizationState {
+  graphState: GraphVisualizationState;
+  setGraphState: (state: GraphVisualizationState) => void;
+  generateGraphSteps: (nodes: any[], links: any[], type: string, code: string) => void;
+}
+
+export const useVisualizationStore = create<VisualizationStore>((set, get) => ({
   array: [],
   steps: [],
   currentStep: 0,
@@ -71,6 +82,10 @@ export const useVisualizationStore = create<VisualizationState>((set, get) => ({
   algorithmType: "",
   algorithmCode: "",
   currentArray: [],
+  visualizationType: 'array',
+  currentIndex: -1,
+  comparingIndex: -1,
+  sortedIndices: [],
 
   setArray: (array) => set({ array, currentArray: [...array] }),
   setSteps: (steps) => set({ steps }),
@@ -134,12 +149,18 @@ export const useVisualizationStore = create<VisualizationState>((set, get) => ({
   },
 
   resetVisualization: () => {
-    const { array } = get();
+    const { array, graphState } = get();
     set({
       currentStep: 0,
       currentStepData: null,
       isPlaying: false,
-      currentArray: [...array]  // Reset to initial array
+      currentArray: [...array],
+      graphState: {
+        ...graphState,
+        visited: [],
+        current: null,
+        path: []
+      }
     });
   },
 
@@ -306,7 +327,115 @@ export const useVisualizationStore = create<VisualizationState>((set, get) => ({
   },
 
   runVisualization: () => {
-    const { array, algorithmCode, algorithmType } = get();
-    get().generateSteps(array, algorithmType, algorithmCode);
+    const { steps } = get();
+    if (!steps?.length) return;
+
+    get().resetVisualization();
+
+    let currentStep = 0;
+    const interval = setInterval(() => {
+      if (currentStep >= steps.length) {
+        clearInterval(interval);
+        return;
+      }
+
+      const step = steps[currentStep];
+      const graphState = { ...get().graphState };
+      
+      if (step.type === 'visit') {
+        const nodeId = step.details?.values?.[0] as string;
+        set({
+          currentStep,
+          currentStepData: step,
+          graphState: {
+            ...graphState,
+            visited: [...graphState.visited, nodeId],
+            current: nodeId
+          }
+        });
+      } else if (step.type === 'path-update') {
+        set({
+          currentStep,
+          currentStepData: step,
+          graphState: {
+            ...graphState,
+            current: step.details?.values?.[0] as string,
+            path: step.details?.path || []
+          }
+        });
+      }
+
+      currentStep++;
+    }, 1000);
+  },
+
+  graphState: {
+    nodes: [],
+    links: [],
+    visited: [],
+    current: null,
+    path: []
+  },
+
+  setGraphState: (state) => set({ graphState: state }),
+
+  generateGraphSteps: (nodes, links, type, code) => {
+    const steps: VisualizationStep[] = [];
+    
+    try {
+      // Wrap the algorithm code with graph visualization hooks
+      const wrappedCode = `
+        function __recordVisit(nodeId) {
+          __steps.push({
+            type: 'visit',
+            indices: [],
+            details: {
+              values: [nodeId],
+              visited: [...visited],
+              current: nodeId
+            }
+          });
+        }
+
+        function __recordPathUpdate(nodeId, distance, path) {
+          __steps.push({
+            type: 'path-update',
+            indices: [],
+            details: {
+              values: [nodeId],
+              distance,
+              path: [...path]
+            }
+          });
+        }
+
+        const visited = new Set();
+        ${code}
+      `;
+
+      const fn = new Function('nodes', 'links', '__steps', wrappedCode);
+      const recordedSteps: VisualizationStep[] = [];
+      fn(nodes, links, recordedSteps);
+
+      set({
+        steps: recordedSteps,
+        currentStep: 0,
+        currentStepData: recordedSteps[0] || null,
+        graphState: {
+          nodes,
+          links,
+          visited: [],
+          current: null,
+          path: []
+        }
+      });
+    } catch (error) {
+      console.error('Error executing graph algorithm:', error);
+      steps.push({
+        type: 'error',
+        indices: [],
+        details: { values: [(error as Error).message] }
+      });
+    }
   }
 }));
